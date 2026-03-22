@@ -1,6 +1,6 @@
-[build-system]
+﻿[build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "latticefit"
@@ -29,3 +29,4 @@ latticefit = "latticefit.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
