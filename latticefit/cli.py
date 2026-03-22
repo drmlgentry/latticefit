@@ -122,6 +122,7 @@ def _make_html_report(result, nulls: list, params: dict) -> str:
     names = result.names or [str(i) for i in range(len(result.data))]
 
     rows = ""
+    csv_lines = ["name,observed,k,predicted,residual,pct_error"]
     for n, xo, k, xp, res in zip(names, result.data, result.labels,
                                    result.predicted, result.residuals):
         pct = abs(xo - xp) / xo * 100
@@ -134,6 +135,7 @@ def _make_html_report(result, nulls: list, params: dict) -> str:
             f"border-radius:3px'></div>{res:.4f}</div></td>"
             f"<td>{pct:.1f}%</td></tr>\n"
         )
+        csv_lines.append(f"{n},{xo:.6g},{k},{xp:.6g},{res:.5f},{pct:.2f}")
 
     null_html = ""
     for nt in nulls:
@@ -151,6 +153,7 @@ def _make_html_report(result, nulls: list, params: dict) -> str:
           </table>
         </div>"""
 
+    csv_content = "\n".join(csv_lines)
     base_name = {(1+5**0.5)/2: "φ (golden ratio)", 2.71828: "e",
                  2.0: "2", 10.0: "10"}.get(round(result.base, 4), f"{result.base:.6g}")
 
@@ -168,7 +171,7 @@ def _make_html_report(result, nulls: list, params: dict) -> str:
   .meta {{ background:#f4f8ff; border-left:4px solid #4a90d9;
            padding:12px 16px; border-radius:4px; font-size:0.9em }}
   table {{ border-collapse:collapse; width:100%; margin:12px 0 }}
-  th,td {{ padding:8px 12px; text-align:left; border-bottom:1px solid #e0e8f0 }}
+  th,td {{ padding:8px 12px; text-align:left; border-bottom:1px solid #e0e8f0; white-space:nowrap }}
   th    {{ background:#eaf2ff; font-weight:600 }}
   tr:hover {{ background:#f7faff }}
   .rms  {{ font-size:1.4em; color:#1a3a5c; font-weight:bold }}
@@ -200,6 +203,23 @@ fraction used = {result.rms/(0.5/result.denom)*100:.1f}%)</span></p>
       <th>Residual δ</th><th>|Δ|/m</th></tr>
   {rows}
 </table>
+<details style="margin-top:8px">
+  <summary style="cursor:pointer;color:#4a90d9;font-size:0.9em">
+    ▼ Download results as CSV
+  </summary>
+  <textarea id="csvdata" style="width:100%;height:120px;font-family:monospace;
+    font-size:0.8em;margin-top:6px;border:1px solid #dde;border-radius:4px;
+    padding:8px" readonly>{csv_content}</textarea>
+  <button onclick="
+    var a=document.createElement('a');
+    a.href='data:text/csv;charset=utf-8,'+
+    encodeURIComponent(document.getElementById('csvdata').value);
+    a.download='latticefit_results.csv';a.click();"
+    style="margin-top:6px;padding:6px 14px;background:#4a90d9;color:white;
+    border:none;border-radius:4px;cursor:pointer;font-size:0.9em">
+    ⬇ Download CSV
+  </button>
+</details>
 
 <h2>Statistical Validation</h2>
 {null_html if null_html else '<p style="color:#888"><i>No null tests run. Use --null N to add.</i></p>'}
@@ -298,8 +318,30 @@ examples:
     parser.add_argument("--quiet", "-q", action="store_true",
                         help="Suppress progress messages")
     parser.add_argument("--version", action="version", version="latticefit 0.1.0")
+    parser.add_argument("--cite", action="store_true",
+                        help="Print citation information and exit")
 
     args = parser.parse_args(argv)
+
+    # ── Cite mode ─────────────────────────────────────────────────
+    if args.cite:
+        print("""
+To cite LatticeFit in academic work, please use:
+
+  Gentry, M. L. (2026). LatticeFit: Discrete lattice fitting with
+  statistical validation (v0.1.0). GitHub.
+  https://github.com/drmlgentry/latticefit
+
+BibTeX:
+  @software{latticefit2026,
+    author  = {Gentry, Marvin L.},
+    title   = {{LatticeFit}: Discrete lattice fitting with statistical validation},
+    year    = {2026},
+    version = {0.1.0},
+    url     = {https://github.com/drmlgentry/latticefit}
+  }
+""")
+        return
 
     # ── Demo mode ─────────────────────────────────────────────────
     if args.demo:
