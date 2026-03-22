@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "latticefit"
+version = "0.1.0"
+description = "Deterministic engine for discovering discrete multiplicative structure in positive real data"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Marvin L. Gentry", email = "drmlgentry@protonmail.com"}]
+keywords = ["data analysis", "lattice fitting", "geometric patterns",
+            "exponential structure", "anomaly detection"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+plots  = ["matplotlib>=3.7"]
+dev    = ["pytest", "matplotlib"]
+
+[project.scripts]
+latticefit = "latticefit.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
