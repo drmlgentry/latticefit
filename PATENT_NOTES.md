@@ -211,3 +211,11 @@ sub-hypothesis being tested.
 
 None of the above disclose the specific combination of bounded integer
 scan + structure-preserving null test + anchor-shift invariance verification.
+
+## Filing Record
+Application #: 64/013,306
+Filed: March 22, 2026
+Confirmation #: 3688
+Fee: $65.00 (micro entity)
+Deadline for non-provisional: March 22, 2027
+
