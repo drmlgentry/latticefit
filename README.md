@@ -1,10 +1,10 @@
-# LatticeFit
+﻿# LatticeFit
 
 **Deterministic engine for discovering discrete multiplicative structure in positive real data.**
 
-Given measurements x₁, x₂, …, xₙ, LatticeFit tests whether they cluster near a geometric lattice:
+Given measurements xâ‚, xâ‚‚, â€¦, xâ‚™, LatticeFit tests whether they cluster near a geometric lattice:
 
-    xᵢ ≈ A · r^(kᵢ/d),   kᵢ ∈ Z
+    xáµ¢ â‰ˆ A Â· r^(káµ¢/d),   káµ¢ âˆˆ Z
 
 and quantifies whether the alignment is statistically non-accidental.
 
@@ -70,3 +70,7 @@ If you use LatticeFit in research, please cite:
 ## License
 
 MIT
+
+---
+> **Patent pending.** US Provisional Application No. 64/013,306 (filed March 22, 2026).
+
