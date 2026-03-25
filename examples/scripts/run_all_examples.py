@@ -38,7 +38,7 @@ def run(label, vals, base, denom, anchor=None, n_null=10000):
         anchor = vals.min()
     t0     = time.time()
     result = fit(vals, anchor=anchor, base=base, denom=denom)
-    null   = log_uniform_null(result, n_trials=n_null, random_seed=42)
+    null   = log_uniform_null(result, n_trials=n_null, seed=42)
     p      = null.p_value
     sig    = "✓✓" if p<0.01 else ("✓" if p<0.05 else ("~" if p<0.10 else "✗"))
     decades = np.log10(vals.max()/vals.min())
@@ -85,7 +85,7 @@ if notes is not None:
 sm = load('sm_masses.csv', 'mass_gev')
 if sm is not None:
     run("SM fermion + boson masses", sm,
-        base=PHI, denom=4, anchor=0.000511)
+        base=PHI, denom=4, anchor=5.11e-4)
 
 # Mammal masses (from existing examples/mammal_masses.csv)
 def clean_mass(s):
@@ -114,7 +114,12 @@ if eq is not None:
 else:
     print("  SKIP: earthquake_energies.csv (run download_data.py)")
 
-pop = load('populations_2024.csv', 'population_2024')
+pop = pd.read_csv(os.path.join(DATA_DIR, 'populations_2024.csv'))
+pop = pd.read_csv(os.path.join(DATA_DIR, 'populations_2024.csv'))
+pop_df = pop[pop['year'].isin([2024,2023])]
+if len(pop_df) == 0: pop_df = pop
+pop = pop_df.groupby('country')['population'].last().values
+pop = pop[pop > 0]
 if pop is not None:
     run("Country populations 2024", pop,
         base=PHI, denom=12)
