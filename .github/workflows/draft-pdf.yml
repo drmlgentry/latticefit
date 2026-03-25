@@ -1,0 +1,14 @@
+﻿on: [push]
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper.md
+      - uses: actions/upload-artifact@v3
+        with:
+          name: paper
+          path: paper.pdf
