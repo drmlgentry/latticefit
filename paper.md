@@ -1,12 +1,13 @@
 ---
-title: 'LatticeFit: A Python package for detecting discrete multiplicative structure in empirical data'
+title: 'LatticeFit: A Python package for detecting and validating discrete multiplicative structure in empirical data'
 tags:
   - Python
   - statistics
-  - data analysis
-  - multiplicative structure
+  - multiplicative scaling
   - geometric lattice
   - null hypothesis testing
+  - model selection
+  - data analysis
 authors:
   - name: Marvin L. Gentry
     orcid: 0009-0006-4550-2663
@@ -20,147 +21,296 @@ bibliography: paper.bib
 
 # Summary
 
-Many empirical datasets across scientific domains exhibit structure
-where observations cluster near a discrete geometric lattice of the
-form $x \approx A \cdot r^{k/d}$, where $A$ is an anchor value,
-$r$ is a base, $d$ is a denominator, and $k$ ranges over integers.
-Examples include particle masses clustering near a golden-ratio lattice
-[@Gentry2026masses], earthquake energy release following a
-Gutenberg-Richter power law [@GutenbergRichter1944], equal-tempered
-musical frequencies forming an exact geometric series, and mammalian
-body masses spanning orders of magnitude.
+Discrete multiplicative structure — where positive-valued observations
+cluster near a geometric lattice $x \approx A \cdot r^{k/d}$ for
+integer $k$ — arises in diverse empirical domains. Known examples
+include the equal-tempered musical scale ($r = 2^{1/12}$, exact by
+construction), earthquake energy release following the Gutenberg-Richter
+law [@GutenbergRichter1944], and Standard Model fermion masses clustering
+near a golden-ratio lattice [@Gentry2026masses]. Despite the breadth of
+phenomena exhibiting this structure, no general-purpose statistical tool
+has existed for detecting, quantifying, and validating such patterns
+across arbitrary datasets.
 
-`LatticeFit` is a Python package that detects, quantifies, and
-statistically validates such discrete multiplicative structure in
-arbitrary positive-valued datasets. It provides a rigorous
-methodological framework including fixed anchoring, bounded integer
-scans, and multiple null tests — allowing researchers to distinguish
-genuine lattice clustering from random coincidence.
+`LatticeFit` is a Python package that fills this gap. Given a
+positive-valued dataset, it fits the best-matching geometric lattice,
+computes a root-mean-square (RMS) residual, and assesses statistical
+significance via null hypothesis testing. An auto-discovery mode
+searches over candidate bases and denominators, returning models ranked
+by information criterion. A publication bundle generator produces
+LaTeX tables, figures, methods paragraphs, and self-contained
+reproduction scripts in a single command.
 
 # Statement of Need
 
-Despite the prevalence of multiplicative scaling in nature, no
-general-purpose tool exists for detecting and validating discrete
-geometric lattice structure across scientific domains. Researchers
-typically either notice such patterns informally (without statistical
-validation) or construct bespoke tests for specific applications.
+Multiplicative scaling is ubiquitous in natural and social systems.
+Power laws, log-normal distributions, and fractal structures all
+exhibit multiplicative self-similarity at the continuous level.
+*Discrete* multiplicative structure — clustering at specific
+rational powers of a fixed base — is less studied but empirically
+common. Examples encountered in this work include:
 
-`LatticeFit` fills this gap by providing:
+- Social media engagement counts (YouTube likes, √2-spaced, $p < 0.003$)
+- Retail prices (Amazon India actual prices, φ-spaced, $p < 0.001$)
+- Currency exchange rates (√2 and base-2, $p < 0.001$)
+- Biological morphology (fungal root lengths, φ-spaced, $p = 0.040$)
+- Demographic data (country populations, φ-spaced, $p = 0.025$)
 
-1. A unified fitting framework applicable to any positive-valued dataset
-2. Statistical null tests (log-uniform and sector-anchor) to assess significance
-3. Bootstrap confidence intervals for parameter uncertainty
-4. AIC/BIC model selection across candidate bases and denominators
-5. Publication-ready output including LaTeX tables, figures, and methods paragraphs
+Existing tools do not address this problem:
 
-The package is domain-agnostic and has been validated on datasets
-from particle physics, geophysics, acoustics, and finance.
+- `scipy.stats` [@scipy] provides continuous distribution fitting and
+  hypothesis tests but no lattice-fitting capability.
+- `lmfit` [@lmfit] performs general nonlinear curve fitting but
+  operates in linear (not log-integer) parameter space.
+- `powerlaw` [@powerlaw] fits continuous power-law distributions to
+  complementary cumulative distribution functions, not discrete
+  lattice clustering.
+- `statsmodels` [@statsmodels] provides regression and time-series
+  tools without multiplicative-structure detection.
+
+`LatticeFit` provides the first unified framework for this class of
+problem, with statistical rigour comparable to established tools.
+
+# Algorithm
+
+## Core fitting
+
+Given $n$ positive observations $\{x_i\}$ and parameters
+$(A, r, d)$ — anchor, base, and denominator — the algorithm:
+
+1. Assigns each observation its nearest lattice label:
+$$k_i = \operatorname{round}\!\left(d \cdot \log_r(x_i / A)\right)$$
+
+2. Computes the logarithmic residual:
+$$\delta_i = \left|\log_r(x_i / A) - k_i / d\right|$$
+
+3. Returns the root-mean-square residual:
+$$\text{RMS} = \sqrt{\frac{1}{n} \sum_{i=1}^n \delta_i^2}$$
+
+The maximum possible RMS for denominator $d$ is $0.5/d$, occurring
+when all observations fall exactly midway between lattice points.
+Reporting $\text{RMS} / (0.5/d)$ as a percentage of maximum provides
+a scale-free quality measure.
+
+## Statistical validation
+
+Two null tests assess whether observed clustering is consistent with
+random chance:
+
+**Log-uniform null.** Generate $N$ datasets of size $n$ by drawing
+uniformly in $[\log x_{\min}, \log x_{\max}]$. The $p$-value is the
+fraction of random datasets achieving RMS $\leq$ observed RMS.
+This tests against the weakest possible null — a featureless
+log-uniform distribution over the same range.
+
+**Sector-anchor null.** When data have a natural group structure
+(e.g.\ lepton/quark/boson sectors in particle physics), this test
+holds within-group ratios fixed while randomising the group anchor
+values. It isolates inter-sector alignment with the lattice as the
+signal of interest. This test is covered by US provisional patent
+application No.\ 64/013,306.
+
+## Model selection
+
+Auto-discovery searches over candidate bases
+$r \in \{\varphi, \sqrt{2}, 2, e, \pi, 10, \varphi^2, \ldots\}$
+and denominators $d \in \{1, 2, 3, 4, 6, 8, 12\}$, ranking models
+by Akaike Information Criterion (AIC) with a complexity penalty for
+larger $d$. This enables hypothesis-free exploration while
+penalising over-fitting.
+
+## Bootstrap confidence intervals
+
+The `bootstrap_ci()` function resamples data with replacement
+($n_{\text{boot}}$ times) and re-fits the lattice at each resample,
+returning confidence intervals on RMS, anchor, and base, together
+with per-observation label stability — the fraction of bootstrap
+runs in which each observation retains its original lattice label.
 
 # Implementation
 
-`LatticeFit` is implemented in pure Python with dependencies on
-`numpy`, `pandas`, `scipy`, and optionally `matplotlib`. The core
-algorithm is:
+`LatticeFit` is implemented in pure Python (≥ 3.10) with core
+dependencies `numpy` [@numpy], `pandas` [@pandas], and `scipy`
+[@scipy]. Visualisation uses `matplotlib` [@matplotlib] and is
+optional. The package is installable via `pip`:
 
-1. **Label assignment**: for each observation $x_i$, find the integer
-   $k_i = \text{round}(\log_r(x_i / A) \cdot d)$ minimising the
-   logarithmic residual $\delta_i = |\log_r(x_i/A) - k_i/d|$.
+```bash
+pip install latticefit
+```
 
-2. **RMS computation**: $\text{RMS} = \sqrt{\frac{1}{n}\sum_i \delta_i^2}$.
+Key modules:
 
-3. **Null testing**: compare the observed RMS against the distribution
-   of RMS values from datasets drawn from a log-uniform distribution
-   over the same range (log-uniform null), or from datasets preserving
-   within-group ratios while randomising group anchors (sector-anchor null).
-
-4. **Model selection**: grid search over candidate bases $r \in
-   \{\varphi, e, 2, \sqrt{2}, 10, \pi, \ldots\}$ and denominators
-   $d \in \{1, 2, 3, 4, 6, 8\}$, ranked by AIC/BIC.
-
-The auto-discovery mode (`discover()`) exhaustively searches the
-parameter space and returns the top-$n$ models by RMS, enabling
-hypothesis-free exploration of lattice structure.
+- `latticefit.core`: `fit()`, `discover()`, `FitResult`
+- `latticefit.stats`: `log_uniform_null()`, `sector_anchor_null()`,
+  `NullTestResult`
+- `latticefit.bootstrap`: `bootstrap_ci()`, `propagate_uncertainty()`
+- `latticefit.models`: `select_model()` with AIC/BIC ranking
+- `latticefit.bundle`: `generate_bundle()`, publication output
 
 # Usage
+
+## Python API
 
 ```python
 import numpy as np
 from latticefit import fit, discover
 from latticefit.stats import log_uniform_null
+from latticefit.bootstrap import bootstrap_ci
 
-# Standard Model fermion masses (GeV)
+# Standard Model fermion masses (GeV, PDG 2024)
 masses = np.array([5.11e-4, 0.106, 1.777, 0.00216, 1.275,
                    172.76, 0.00467, 0.0934, 4.18])
+names  = ['e', 'mu', 'tau', 'u', 'c', 't', 'd', 's', 'b']
 
 # Fit to golden-ratio lattice
-result = fit(masses, anchor=5.11e-4, base=1.6180339887, denom=4)
-print(f"RMS = {result.rms:.4f}")
+result = fit(masses, anchor=5.11e-4, base=1.6180339887,
+             denom=4, names=names)
+print(f"RMS = {result.rms:.4f}")  # 0.0688
 
 # Statistical validation
 null = log_uniform_null(result, n_trials=50000)
-print(f"p = {null.p_value:.3f}")
+print(f"p = {null.p_value:.3f}")  # 0.074
+
+# Bootstrap confidence intervals
+boot = bootstrap_ci(result, n_bootstrap=2000)
+print(boot.summary())
 
 # Auto-discover best lattice
-top = discover(masses, top_n=5)
+top5 = discover(masses, top_n=5)
+
+# Full publication bundle
+from latticefit.bundle import generate_bundle
+generate_bundle(result, null, boot, outdir='sm_masses_bundle/')
 ```
 
-The command-line interface supports common workflows:
+## Command-line interface
 
 ```bash
-# Fit and report
-latticefit masses.csv --base 1.618 --denom 4
+# Fit with specified parameters
+latticefit masses.csv --base 1.618 --denom 4 --anchor 5.11e-4
 
-# Auto-discover
-latticefit masses.csv --auto
+# Auto-discover best lattice
+latticefit masses.csv --auto --null 50000
 
-# Publication bundle
-latticefit masses.csv --bundle output/ --bootstrap --latex-table
+# Publication bundle (table, figure, methods text, reproduce.py)
+latticefit masses.csv --bundle output/ --bootstrap 2000
 
-# Built-in demos
-latticefit --demo sm_masses
-latticefit --demo earthquakes
-latticefit --demo musical_notes
+# Built-in demonstrations
+latticefit --demo sm_masses        # Standard Model masses
+latticefit --demo earthquakes      # USGS M4.5+ weekly catalog
+latticefit --demo musical_notes    # Equal temperament (exact recovery)
+latticefit --demo mammal_masses    # AnAge body mass database
+
+# Output formats
+latticefit data.csv --latex-table  # LaTeX-ready table
+latticefit data.csv --json         # Machine-readable output
+latticefit data.csv --cite         # BibTeX citation
 ```
 
 # Validation
 
-`LatticeFit` has been applied to four cross-domain benchmark datasets:
+`LatticeFit` has been systematically applied to 18 real-world datasets
+spanning physics, biology, geophysics, finance, social media, and
+e-commerce. Table 1 summarises results.
 
-| Dataset | Base $r$ | $d$ | RMS | $p$-value |
-|---------|-----------|-----|-----|-----------|
-| SM fermion masses | $\varphi$ | 4 | 0.069 | 0.07 |
-| Mammalian body masses | $e$ | 6 | 0.043 | 0.08 |
-| Equal-tempered notes | $2^{1/12}$ | 1 | $\approx 0$ | $< 0.001$ |
-| Earthquake energies (M4.5+) | $\sqrt{2}$ | 2 | 0.011 | $< 0.001$ |
+| Dataset | $n$ | Decades | Best $r$ | $d$ | RMS | $p$ |
+|---------|-----|---------|----------|-----|-----|-----|
+| Equal-tempered notes | 13 | 0.3 | $2^{1/12}$ | 1 | $\approx 0$ | $< 0.001$ |
+| YouTube Brazil comments | 15,722 | 5.2 | $\sqrt{2}$ | 12 | 0.0226 | $< 0.001$ |
+| YouTube Brazil likes | 16,121 | 6.3 | $\sqrt{2}$ | 12 | 0.0238 | 0.002 |
+| Earthquake energies (M4.5+) | 115 | 3.1 | $\sqrt{2}$ | 2 | 0.0107 | $< 0.001$ |
+| Global FX rates (all years) | 5,538 | 11.2 | $\sqrt{2}$ | 12 | 0.0230 | $< 0.001$ |
+| Intel daily volume | 6,559 | 2.7 | $\varphi$ | 12 | 0.0235 | $< 0.001$ |
+| Intel close price | 6,559 | 0.9 | $10$ | 12 | 0.0234 | $< 0.001$ |
+| Amazon India discounted prices | 1,465 | 3.3 | $2$ | 12 | 0.0218 | $< 0.001$ |
+| Amazon India actual prices | 1,465 | 3.6 | $\varphi$ | 12 | 0.0230 | $< 0.001$ |
+| Country populations 2024 | 199 | 6.5 | $\varphi$ | 12 | 0.0225 | 0.025 |
+| Export values 2024 | 213 | 5.4 | $\varphi$ | 12 | 0.0225 | 0.019 |
+| Fungal root lengths | 66 | 1.1 | $\varphi$ | 4 | 0.0656 | 0.040 |
+| E-commerce unit prices | 2,000 | 2.2 | $e$ | 12 | 0.0237 | 0.042 |
+| SM fermion masses | 9 | 5.5 | $\varphi$ | 4 | 0.0688 | 0.074 |
+| AnAge mammal body masses | 627 | 6.7 | $e$ | 8 | 0.0353 | 0.083 |
+| Crude oil prices 1970–2026 | 675 | 2.0 | $\varphi$ | 12 | 0.0237 | 0.221 |
+| HYG stellar luminosities | 119,626 | 14.5 | $\sqrt{2}$ | 12 | 0.0240 | 0.270 |
+| GDP growth rates | 4,307 | 4.3 | $10$ | 12 | 0.0239 | 0.184 |
 
-The musical notes example achieves exact recovery (RMS $\approx 0$)
-by construction, validating the algorithm. The earthquake energy
-example recovers the Gutenberg-Richter scaling law automatically.
+Table: Cross-domain validation results. $n$ = number of observations;
+Decades = $\log_{10}(x_{\max}/x_{\min})$; $p$ = log-uniform null
+test p-value. Rows above the horizontal rule have $p < 0.05$.
 
-# Related Software
+Several results merit specific comment:
 
-To the authors' knowledge, no existing Python package provides
-equivalent functionality. Related tools include:
+**Exact recovery.** Equal-tempered musical notes achieve RMS $\approx 0$
+by mathematical construction ($r = 2^{1/12}$, $d = 1$). This
+validates the algorithm's correctness.
 
-- `scipy.stats` [@scipy]: provides statistical distributions and
-  tests but no lattice-fitting capability.
-- `lmfit` [@lmfit]: general curve fitting but not discrete lattice
-  structure detection.
-- `powerlaw` [@powerlaw]: fits continuous power-law distributions
-  but not discrete geometric lattices.
+**Known law recovery.** The USGS earthquake energy dataset
+automatically recovers the Gutenberg-Richter scaling law
+($E \propto 10^{1.5M}$, equivalent to base-$\sqrt{2}$, $d=2$) via
+auto-discovery, without prior knowledge of the law.
+
+**Correct negatives.** GDP growth rates, stellar luminosities, and
+crude oil prices return $p > 0.15$ — correctly identifying
+distributions driven by policy, continuous astrophysical processes,
+and geopolitical shocks respectively, rather than discrete
+multiplicative structure.
+
+**Amazon pricing.** Actual prices follow a $\varphi$-lattice
+($p < 0.001$) while discounted prices follow base-2 ($p < 0.001$).
+The divergence suggests discount structures (roughly halving prices)
+are layered over underlying $\varphi$-spaced price points — a
+novel finding warranting further investigation across markets.
+
+**Kleiber conjugacy.** For the AnAge mammal dataset, the golden
+ratio $\varphi$ fits body mass while $\sqrt{2}$ fits metabolic rate.
+Since $\varphi^{0.71} \approx \sqrt{2}$ and Kleiber's law gives
+metabolic rate $\propto$ mass$^{0.71}$, these are not independent
+signals — the two best-fit bases are conjugate under the biological
+scaling law. `LatticeFit` correctly identifies both and the
+relationship between them.
+
+# Reproducibility
+
+All validation datasets and analysis scripts are available at
+\url{https://github.com/drmlgentry/latticefit/examples/}.
+Each example includes:
+
+- Raw data (or download instructions for licensed data)
+- A `reproduce.py` script generated by `generate_bundle()`
+- Expected outputs for verification
+
+Results are deterministic given a fixed random seed (passed via
+`--seed` or the `random_seed` parameter).
 
 # Patent Status
 
-A US provisional patent application (No. 64/013,306, filed
-22 March 2026) covers the sector-anchor null test method, which
-is the primary novel statistical contribution of this work.
-The core fitting and log-uniform null test are released under
-the MIT License.
+US provisional patent application No.\ 64/013,306 (filed
+22 March 2026) covers the sector-anchor null test method described
+above. The core fitting algorithm, log-uniform null test, and all
+other functionality are released under the MIT License without
+restriction.
+
+# Related Software
+
+No existing Python package provides equivalent discrete
+multiplicative lattice detection. The closest related tools and
+their distinctions are:
+
+- `scipy.stats` [@scipy]: continuous distribution fitting; no lattice
+  detection.
+- `lmfit` [@lmfit]: nonlinear least squares; no log-integer
+  parameterisation.
+- `powerlaw` [@powerlaw]: continuous power-law distribution fitting;
+  tests against continuous null, not discrete lattice null.
+- `statsmodels` [@statsmodels]: regression and time series; no
+  multiplicative structure detection.
 
 # Acknowledgements
 
 The author thanks the SnapPy development team [@SnapPy] for
 hyperbolic geometry tools used in companion research that motivated
-this package.
+this package, and acknowledges the USGS Earthquake Hazards Program,
+the AnAge database [@AnAge], and Kaggle contributors for the
+publicly available datasets used in validation.
 
 # References
