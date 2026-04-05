@@ -74,3 +74,25 @@ MIT
 ---
 > **Patent pending.** US Provisional Application No. 64/013,306 (filed March 22, 2026).
 
+
+## Validity Criteria
+
+Before interpreting a LatticeFit result as significant, verify:
+
+1. **Minimum range**: Data should span at least 3 orders of magnitude
+   (log10 range >= 3). Datasets spanning < 1 order of magnitude will
+   show spurious lattice structure regardless of base, because the
+   null distribution becomes non-uniform at narrow ranges.
+
+2. **Binned data**: Check that data is not discretized into fixed bins
+   (e.g. patent activity classifications, assay concentration series).
+   Use len(unique_values) / len(values) > 0.5 as a rough screen.
+
+3. **Physics-motivated null**: Where a theoretical prediction exists
+   (e.g. Bethe-Weizsacker for nuclear BE, Gutenberg-Richter for
+   earthquakes), test residuals from that prediction rather than
+   raw values.
+
+4. **Effect size**: z-score alone is misleading at large n. Report
+   both z and the fractional RMS reduction: (null_RMS - obs_RMS) / null_RMS.
+   Values below 5% are marginal regardless of p-value.
