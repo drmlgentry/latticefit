@@ -75,7 +75,7 @@ BASES = {"φ (golden ratio)": PHI, "√2": 2**0.5, "2": 2.0,
 
 CROSS_DOMAIN = [
     # domain, n, rms, null_rms, z, p_str, orders, category, status
-    ("SM fermion masses",          12,  0.0550, 0.0720, +4.50, "<0.001", 8.0, "Physics",    "GENUINE"),
+    ("SM fermion masses (n=12)",    12,  0.0688, 0.0717, +0.30, "0.371",  8.0, "Physics",    "MARGINAL"),
     ("Rice 44K MAF",            36901,  0.0712, 0.0721, +4.25, "<0.001", 2.5, "Genomics",   "GENUINE"),
     ("Cetacea body masses",         76,  0.0631, 0.0720, +2.43, "0.008",  3.7, "Ecology",    "GENUINE"),
     ("EGFR SAR (CHEMBL1064829)",    32,  0.0600, 0.0721, +2.12, "0.021",  3.4, "Pharma",     "GENUINE"),
