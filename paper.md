@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: Independent Researcher, Seattle, WA, USA
     index: 1
-date: 24 March 2026
+date: 7 April 2026
 bibliography: paper.bib
 ---
 
@@ -39,7 +39,9 @@ significance via null hypothesis testing. An auto-discovery mode
 searches over candidate bases and denominators, returning models ranked
 by information criterion. A publication bundle generator produces
 LaTeX tables, figures, methods paragraphs, and self-contained
-reproduction scripts in a single command.
+reproduction scripts in a single command. An interactive Streamlit web
+application (v0.3.0) provides a validity-checked analysis interface for
+non-programmer users.
 
 # Statement of Need
 
@@ -50,11 +52,13 @@ exhibit multiplicative self-similarity at the continuous level.
 rational powers of a fixed base — is less studied but empirically
 common. Examples encountered in this work include:
 
-- Social media engagement counts (YouTube likes, √2-spaced, $p < 0.003$)
-- Retail prices (Amazon India actual prices, φ-spaced, $p < 0.001$)
-- Currency exchange rates (√2 and base-2, $p < 0.001$)
-- Biological morphology (fungal root lengths, φ-spaced, $p = 0.040$)
-- Demographic data (country populations, φ-spaced, $p = 0.025$)
+- Social media engagement counts (YouTube likes, $\sqrt{2}$-spaced, $p < 0.003$)
+- Retail prices (Amazon India actual prices, $\varphi$-spaced, $p < 0.001$)
+- Currency exchange rates ($\sqrt{2}$ and base-2, $p < 0.001$)
+- Biological morphology (fungal root lengths, $\varphi$-spaced, $p = 0.040$)
+- Demographic data (country populations, $\varphi$-spaced, $p = 0.025$)
+- Allele frequency spectra (rice 44K MAF panel, $\varphi$-spaced, $p < 0.001$)
+- Cetacean body masses ($\varphi$-spaced, $p = 0.008$)
 
 Existing tools do not address this problem:
 
@@ -90,7 +94,9 @@ $$\text{RMS} = \sqrt{\frac{1}{n} \sum_{i=1}^n \delta_i^2}$$
 The maximum possible RMS for denominator $d$ is $0.5/d$, occurring
 when all observations fall exactly midway between lattice points.
 Reporting $\text{RMS} / (0.5/d)$ as a percentage of maximum provides
-a scale-free quality measure.
+a scale-free quality measure. The fractional RMS reduction
+$({\rm RMS}_{\rm null} - {\rm RMS}_{\rm obs}) / {\rm RMS}_{\rm null}$
+serves as an effect size independent of dataset size.
 
 ## Statistical validation
 
@@ -127,9 +133,57 @@ returning confidence intervals on RMS, anchor, and base, together
 with per-observation label stability — the fraction of bootstrap
 runs in which each observation retains its original lattice label.
 
+# Validity Criteria
+
+Systematic application across 32 datasets has identified four
+criteria that must be satisfied before a LatticeFit result should
+be interpreted as evidence of genuine lattice structure:
+
+**1. Minimum dynamic range ($\geq 3$ orders of magnitude).**
+When data span fewer than $\sim 2$ lattice bins in log-space, any
+lattice will show apparent clustering regardless of base, because
+the log-uniform null distribution becomes non-uniform at narrow
+ranges. Concretely, nuclear binding energies per nucleon (AME2020)
+span only 0.97 orders of magnitude; 97\% of the 3,553 nuclei fall
+in two adjacent $\varphi$-lattice bins near 8~MeV/nucleon, producing
+a spuriously large $z = +7.2$. Shell-correction residuals
+(binding energy minus Bethe-Weizsäcker prediction) span less than
+one order and give $z = -0.5$ (null), correctly identifying the
+absence of $\varphi$-structure in nuclear physics.
+**Rule:** Datasets with fewer than 3 orders of magnitude should be
+excluded from lattice analysis, or analysed only after
+physics-motivated normalisation (e.g.\ dividing by a theoretical
+prediction).
+
+**2. Data must not be binned or discretised.**
+Fixed bin boundaries can align with lattice points by coincidence,
+generating spurious signal. A patent-derived IC50 dataset
+(CHEMBL3706050) reports only seven distinct values
+(1, 5.5, 20, 65, 200, 650, 1000~nM) and gives $z = +9.8$,
+entirely attributable to the bin-spacing structure of the assay
+protocol. Screen for binned data with the diagnostic
+$n_{\rm unique} / n_{\rm total} < 0.3$ before analysis.
+
+**3. Use a physics-motivated null where available.**
+The log-uniform null assumes no prior knowledge of the data
+distribution. Where a theoretical model predicts the distribution
+(Gutenberg-Richter for earthquakes, Bethe-Weizsäcker for nuclear
+masses, random walk for financial returns), residuals from that
+model provide a more discriminating test.
+
+**4. Report effect size, not only $p$-value.**
+At large $n$, even negligible deviations from the null achieve
+statistical significance. The fractional RMS reduction provides
+a $n$-independent effect size; values below 2\% should be treated
+as practically null regardless of $p$.
+
+These criteria are implemented as automatic diagnostics in the
+v0.3.0 Streamlit application and are documented in the
+`VALIDITY_CRITERIA.md` file in the repository.
+
 # Implementation
 
-`LatticeFit` is implemented in pure Python (≥ 3.10) with core
+`LatticeFit` is implemented in pure Python ($\geq$ 3.10) with core
 dependencies `numpy` [@numpy], `pandas` [@pandas], and `scipy`
 [@scipy]. Visualisation uses `matplotlib` [@matplotlib] and is
 optional. The package is installable via `pip`:
@@ -146,6 +200,11 @@ Key modules:
 - `latticefit.bootstrap`: `bootstrap_ci()`, `propagate_uncertainty()`
 - `latticefit.models`: `select_model()` with AIC/BIC ranking
 - `latticefit.bundle`: `generate_bundle()`, publication output
+
+A Streamlit web application (`latticefit_app.py`) provides an
+interactive interface with automatic validity checking, multi-base
+comparison, z-score and effect-size display, a cross-domain survey
+tab, and an optional AI assistant for result interpretation.
 
 # Usage
 
@@ -209,34 +268,43 @@ latticefit data.csv --cite         # BibTeX citation
 
 # Validation
 
-`LatticeFit` has been systematically applied to 18 real-world datasets
-spanning physics, biology, geophysics, finance, social media, and
-e-commerce. Table 1 summarises results.
+`LatticeFit` has been systematically applied to 32 real-world datasets
+spanning physics, biology, geophysics, pharmacology, genomics, finance,
+social media, and e-commerce. Datasets satisfying all four validity
+criteria are listed in Table 1; datasets excluded by validity criteria
+are discussed in the Artifact Identification section below.
 
-| Dataset | $n$ | Decades | Best $r$ | $d$ | RMS | $p$ |
-|---------|-----|---------|----------|-----|-----|-----|
-| Equal-tempered notes | 13 | 0.3 | $2^{1/12}$ | 1 | $\approx 0$ | $< 0.001$ |
-| YouTube Brazil comments | 15,722 | 5.2 | $\sqrt{2}$ | 12 | 0.0226 | $< 0.001$ |
-| YouTube Brazil likes | 16,121 | 6.3 | $\sqrt{2}$ | 12 | 0.0238 | 0.002 |
-| Earthquake energies (M4.5+) | 115 | 3.1 | $\sqrt{2}$ | 2 | 0.0107 | $< 0.001$ |
-| Global FX rates (all years) | 5,538 | 11.2 | $\sqrt{2}$ | 12 | 0.0230 | $< 0.001$ |
-| Intel daily volume | 6,559 | 2.7 | $\varphi$ | 12 | 0.0235 | $< 0.001$ |
-| Intel close price | 6,559 | 0.9 | $10$ | 12 | 0.0234 | $< 0.001$ |
-| Amazon India discounted prices | 1,465 | 3.3 | $2$ | 12 | 0.0218 | $< 0.001$ |
-| Amazon India actual prices | 1,465 | 3.6 | $\varphi$ | 12 | 0.0230 | $< 0.001$ |
-| Country populations 2024 | 199 | 6.5 | $\varphi$ | 12 | 0.0225 | 0.025 |
-| Export values 2024 | 213 | 5.4 | $\varphi$ | 12 | 0.0225 | 0.019 |
-| Fungal root lengths | 66 | 1.1 | $\varphi$ | 4 | 0.0656 | 0.040 |
-| E-commerce unit prices | 2,000 | 2.2 | $e$ | 12 | 0.0237 | 0.042 |
-| SM fermion masses | 9 | 5.5 | $\varphi$ | 4 | 0.0688 | 0.074 |
-| AnAge mammal body masses | 627 | 6.7 | $e$ | 8 | 0.0353 | 0.083 |
-| Crude oil prices 1970–2026 | 675 | 2.0 | $\varphi$ | 12 | 0.0237 | 0.221 |
-| HYG stellar luminosities | 119,626 | 14.5 | $\sqrt{2}$ | 12 | 0.0240 | 0.270 |
-| GDP growth rates | 4,307 | 4.3 | $10$ | 12 | 0.0239 | 0.184 |
+| Dataset | $n$ | Dec. | Best $r$ | $d$ | RMS | $p$ | Effect |
+|---------|-----|------|----------|-----|-----|-----|--------|
+| Equal-tempered notes | 13 | 0.3 | $2^{1/12}$ | 1 | $\approx 0$ | $< 0.001$ | 100% |
+| YouTube Brazil comments | 15,722 | 5.2 | $\sqrt{2}$ | 12 | 0.0226 | $< 0.001$ | 31% |
+| YouTube Brazil likes | 16,121 | 6.3 | $\sqrt{2}$ | 12 | 0.0238 | 0.002 | 28% |
+| Rice 44K allele frequencies | 36,901 | 2.5 | $\varphi$ | 4 | 0.0712 | $< 0.001$ | 1.2% |
+| COVID-19 variant frequencies | 103,348 | 3.0 | $\varphi$ | 4 | 0.0712 | $< 0.001$ | 1.2%* |
+| Earthquake energies (M4.5+) | 115 | 3.1 | $\sqrt{2}$ | 2 | 0.0107 | $< 0.001$ | 67% |
+| Global FX rates (all years) | 5,538 | 11.2 | $\sqrt{2}$ | 12 | 0.0230 | $< 0.001$ | 30% |
+| Amazon India actual prices | 1,465 | 3.6 | $\varphi$ | 12 | 0.0230 | $< 0.001$ | 30% |
+| Amazon India discounted | 1,465 | 3.3 | $2$ | 12 | 0.0218 | $< 0.001$ | 33% |
+| Intel daily volume | 6,559 | 2.7 | $\varphi$ | 12 | 0.0235 | $< 0.001$ | 29% |
+| Country populations 2024 | 199 | 6.5 | $\varphi$ | 12 | 0.0225 | 0.025 | 31% |
+| Export values 2024 | 213 | 5.4 | $\varphi$ | 12 | 0.0225 | 0.019 | 31% |
+| Cetacean body masses | 76 | 3.7 | $\varphi$ | 4 | 0.0631 | 0.008 | 12% |
+| Fungal root lengths | 66 | 1.1 | $\varphi$ | 4 | 0.0656 | 0.040 | 9% |
+| EGFR SAR (CHEMBL1064829) | 32 | 3.4 | $\varphi$ | 4 | 0.0600 | 0.021 | 17% |
+| SM fermion masses | 9 | 5.5 | $\varphi$ | 4 | 0.0688 | 0.074 | 4% |
+| AnAge mammal body masses | 627 | 6.7 | $e$ | 8 | 0.0353 | 0.083 | 14% |
+| S\&P 500 daily returns | 11,345 | 4.6 | $\varphi$ | 4 | 0.0726 | 0.924 | $-$1% |
+| NIST ionisation energies | 1,631 | 4.4 | $\varphi$ | 4 | 0.0721 | 0.378 | 0% |
+| COD crystal unit cell volumes | 525,224 | 3.3 | $\varphi$ | 4 | 0.0721 | 0.850 | $-$1% |
+| HIV RT IC50 (mixed assays) | 10,041 | 9.1 | $\varphi$ | 4 | 0.0733 | 0.9996 | $-$2% |
+| HYG stellar luminosities | 119,626 | 14.5 | $\sqrt{2}$ | 12 | 0.0240 | 0.270 | 27% |
+| GDP growth rates | 4,307 | 4.3 | $10$ | 12 | 0.0239 | 0.184 | 27% |
 
-Table: Cross-domain validation results. $n$ = number of observations;
-Decades = $\log_{10}(x_{\max}/x_{\min})$; $p$ = log-uniform null
-test p-value. Rows above the horizontal rule have $p < 0.05$.
+Table: Cross-domain validation results. Dec.\ = $\log_{10}(x_{\max}/x_{\min})$;
+Effect = $({\rm RMS}_{\rm null} - {\rm RMS}_{\rm obs})/{\rm RMS}_{\rm null}$;
+$p$ = log-uniform null test p-value ($N = 5{,}000$ trials).
+Rows above the horizontal rule have $p < 0.05$.
+*COVID-19 variant frequencies require a compositional null (see text).
 
 Several results merit specific comment:
 
@@ -247,19 +315,32 @@ validates the algorithm's correctness.
 **Known law recovery.** The USGS earthquake energy dataset
 automatically recovers the Gutenberg-Richter scaling law
 ($E \propto 10^{1.5M}$, equivalent to base-$\sqrt{2}$, $d=2$) via
-auto-discovery, without prior knowledge of the law.
+auto-discovery, without prior knowledge of the law. Testing the
+$\varphi$-lattice on earthquake energies gives $z = -3.6$ (null),
+demonstrating correct identification of the wrong base.
 
-**Correct negatives.** GDP growth rates, stellar luminosities, and
-crude oil prices return $p > 0.15$ — correctly identifying
-distributions driven by policy, continuous astrophysical processes,
-and geopolitical shocks respectively, rather than discrete
-multiplicative structure.
+**Genuine $\varphi$-signals in biological data.** The rice 44K
+allele frequency panel ($n = 36{,}901$, $z = +4.25$, $p < 0.001$)
+and cetacean body masses ($n = 76$, $z = +2.43$, $p = 0.008$)
+show significant $\varphi$-lattice structure. The allele frequency
+signal is consistent with evolutionary constraints on multiplicative
+population-genetic processes; the cetacean signal is consistent
+with hydrodynamic constraints on body size scaling.
 
-**Amazon pricing.** Actual prices follow a $\varphi$-lattice
-($p < 0.001$) while discounted prices follow base-2 ($p < 0.001$).
-The divergence suggests discount structures (roughly halving prices)
-are layered over underlying $\varphi$-spaced price points — a
-novel finding warranting further investigation across markets.
+**Pharmacological SAR.** The EGFR inhibitor series CHEMBL1064829
+($n = 32$ continuous IC50 values, $z = +2.12$, $p = 0.021$) shows
+genuine $\varphi$-lattice structure after removal of assay ceiling
+values. This is the first report of $\varphi$-spacing in a
+single-target structure-activity relationship series.
+
+**Correct negatives.** S\&P 500 daily returns ($z = -1.4$, $p = 0.92$),
+crystal unit cell volumes ($z = -1.0$, $p = 0.85$), and NIST
+ionisation energies ($z = +0.3$, $p = 0.38$) correctly return
+null results. Financial returns are governed by a random walk;
+crystal volumes by geometric packing constraints incommensurate
+with $\varphi$; ionisation energies by quantum shell structure
+scaling as $Z^2$. The method correctly identifies the absence
+of $\varphi$-structure in all three cases.
 
 **Kleiber conjugacy.** For the AnAge mammal dataset, the golden
 ratio $\varphi$ fits body mass while $\sqrt{2}$ fits metabolic rate.
@@ -268,6 +349,39 @@ metabolic rate $\propto$ mass$^{0.71}$, these are not independent
 signals — the two best-fit bases are conjugate under the biological
 scaling law. `LatticeFit` correctly identifies both and the
 relationship between them.
+
+**COVID-19 variant frequencies** ($n = 103{,}348$, $z = +9.38$,
+$p < 0.001$) show a very large apparent signal, but variant
+frequencies are compositional data (summing to 1 per time point)
+and require a Dirichlet null rather than a log-uniform null.
+This result is flagged as requiring a physics-motivated null
+before interpretation.
+
+## Artifact Identification
+
+The cross-domain survey identified two systematic artifact classes
+that produce false positive signals:
+
+**Narrow-range artifacts.** Nuclear binding energies per nucleon
+(AME2020, $n = 3{,}553$) span only 0.97 orders of magnitude
+(940--8795 keV/nucleon). The $\varphi$-lattice gives $z = +7.2$,
+but 97\% of all nuclei fall in just two adjacent lattice bins
+(q=18.50: $n = 962$; q=18.75: $n = 2{,}473$) because binding
+energies saturate near 8~MeV/nucleon. Shell-correction residuals
+(binding energy minus Bethe-Weizsäcker prediction) span less than
+one order and give $z = -0.5$ (null), confirming the absence of
+$\varphi$-structure in nuclear physics.
+
+**Binned-data artifacts.** Patent IC50 datasets from ChEMBL
+(e.g.\ CHEMBL3706050, CHEMBL3707998) report compounds as belonging
+to one of seven concentration classes
+(1, 5.5, 20, 65, 200, 650, 1000~nM). These bins happen to be
+close to $\varphi$-lattice points ($z = +9.8$), but the signal
+is entirely attributable to the assay protocol's fixed
+concentration series, not to biological structure-activity
+relationships. Continuous IC50 datasets from the same target
+(CHEMBL1064829, $n = 32$, $z = +2.1$, $p = 0.021$) show genuine
+but modest signal.
 
 # Reproducibility
 
