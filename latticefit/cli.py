@@ -225,7 +225,7 @@ fraction used = {result.rms/(0.5/result.denom)*100:.1f}%)</span></p>
 {null_html if null_html else '<p style="color:#888"><i>No null tests run. Use --null N to add.</i></p>'}
 
 <div class="footer">
-  LatticeFit 0.1.0 &nbsp;|&nbsp;
+  LatticeFit 0.2.0 &nbsp;|&nbsp;
   M. L. Gentry, drmlgentry@protonmail.com &nbsp;|&nbsp;
   <a href="https://github.com/drmlgentry/latticefit">github.com/drmlgentry/latticefit</a>
 </div>
@@ -235,7 +235,7 @@ fraction used = {result.rms/(0.5/result.denom)*100:.1f}%)</span></p>
 
 def _json_output(result, nulls: list) -> dict:
     return {
-        "latticefit_version": "0.1.0",
+        "latticefit_version": "0.2.0",
         "parameters": {
             "anchor": result.anchor,
             "base":   result.base,
@@ -271,6 +271,44 @@ def _json_output(result, nulls: list) -> dict:
     }
 
 
+
+def _run_lucas(args, x, names):
+    """Run Lucas-mode fit (base fixed to phi by theorem)."""
+    from latticefit.lucas import fit_lucas, PRIME_LUCAS
+    anchor = None if args.anchor == "first" else float(args.anchor)
+    result = fit_lucas(x, anchor=anchor, q_grid=args.denom,
+                       n_null=max(args.null, 1000))
+    if not args.json:
+        print(bold("\n── Lucas-mode fit (base = φ, theoretically derived) ──"))
+        print(result.summary())
+        print()
+        if result.prime_lucas_hits:
+            print(green("  Prime Lucas hits (prime dictionary of PMNS covering tower):"))
+            for a in result.prime_lucas_hits:
+                nm = names[x.tolist().index(a.value)] if names else f"{a.value:.5g}"
+                print(f"    {nm}: q={a.q:+.2f}  L_{{k}}={a.lucas_integer}  "
+                      f"delta={a.delta_pct:.3f}%")
+        print(f"\n  Lucas-integer fraction: {result.lucas_integer_fraction:.3f}")
+        print(f"  p-value: {result.p_value:.4f}  (null mean={result.null_mean:.5f})")
+    else:
+        import json
+        print(json.dumps({
+            "mode": "lucas",
+            "anchor": result.anchor,
+            "rms": result.rms,
+            "p_value": result.p_value,
+            "lucas_integer_fraction": result.lucas_integer_fraction,
+            "observations": [
+                {"value": a.value, "q": a.q, "lk": a.lk,
+                 "is_integer_lucas": a.is_integer_lucas,
+                 "lucas_integer": a.lucas_integer,
+                 "is_prime_lucas": a.is_prime_lucas_,
+                 "delta_pct": a.delta_pct}
+                for a in result.assignments
+            ]
+        }, indent=2))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="latticefit",
@@ -285,6 +323,7 @@ examples:
   latticefit data.csv --report report.html --json
   latticefit --demo
   echo "1.0,2.618,6.854" | latticefit -
+  latticefit data.csv --lucas --anchor 5.11e-4
         """,
     )
 
@@ -315,9 +354,11 @@ examples:
                         help="Print JSON output (machine-readable)")
     parser.add_argument("--demo", action="store_true",
                         help="Run built-in Standard Model demo")
+    parser.add_argument("--lucas", action="store_true",
+                        help="Lucas mode: fix base=phi by theorem, report Lucas integer and prime Lucas hits")
     parser.add_argument("--quiet", "-q", action="store_true",
                         help="Suppress progress messages")
-    parser.add_argument("--version", action="version", version="latticefit 0.1.0")
+    parser.add_argument("--version", action="version", version="latticefit 0.2.0")
     parser.add_argument("--cite", action="store_true",
                         help="Print citation information and exit")
 
@@ -436,6 +477,11 @@ BibTeX:
             frac = result.rms / max_rms * 100
             print(f"\n{green('RMS = ' + f'{result.rms:.5f}')}"
                   f"  ({frac:.1f}% of max {max_rms:.4f})")
+
+    # ── Lucas mode ────────────────────────────────────────────────
+    if args.lucas:
+        _run_lucas(args, x, names)
+        return
 
     # ── Null tests ────────────────────────────────────────────────
     if args.null > 0:

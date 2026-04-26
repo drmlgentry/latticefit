@@ -45,6 +45,37 @@ latticefit masses.csv --anchor 5.11e-4 --base phi --denom 4 --null 10000 --plot 
 latticefit data.csv --auto
 ```
 
+
+## Lucas Mode
+
+Based on the **Lucas-geodesic bridge theorem** (Gentry 2026), the golden ratio
+base φ is *theoretically derived* for data from arithmetic hyperbolic 3-manifolds:
+
+> A geodesic of length ℓ satisfies ℓ = k·log φ if and only if
+> the holonomy trace magnitude |tr(γ)| = L_k = φ^k + φ^{-k} (exact).
+
+Use `--lucas` to fix the base to φ and get Lucas number diagnostics:
+
+```bash
+latticefit data.csv --lucas --anchor 5.11e-4
+```
+
+Output includes:
+- RMS residual and p-value against log-uniform null
+- Fraction of data at **integer Lucas number** positions (L_0=2, L_2=3, L_4=7, L_5=11, L_7=29…)
+- **Prime Lucas hits**: data points at prime Lucas positions — the prime dictionary {2, 3, 7, 11, 29} of the PMNS covering tower
+
+Python API:
+
+```python
+from latticefit.lucas import fit_lucas, lucas
+
+result = fit_lucas(masses, anchor=5.11e-4)
+print(result.summary())
+# L_7 = phi^7 + phi^-7 = 29.034  (CKM norm-squared)
+print(lucas(7))
+```
+
 ## Applications
 
 - Particle physics mass spectra
