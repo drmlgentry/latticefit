@@ -193,7 +193,14 @@ def run_latticefit_full(vals, n_null=5000, fixed_anchor=None):
 def call_claude(system_prompt, user_message, max_tokens=800):
     if not HAS_ANTHROPIC:
         return "Install anthropic package: pip install anthropic"
-    client = anthropic.Anthropic()
+    import os
+    try:
+        import streamlit as _st
+        _key = _st.secrets.get("ANTHROPIC_API_KEY", "")
+    except Exception:
+        _key = ""
+    _key = _key or os.environ.get("ANTHROPIC_API_KEY", "")
+    client = anthropic.Anthropic(api_key=_key or None)
     msg = client.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=max_tokens,
