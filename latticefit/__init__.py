@@ -19,7 +19,7 @@ from .optimize import discover, PHI, KNOWN
 from .stats    import log_uniform_null, sector_anchor_null, NullTestResult
 from . import plots
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__  = "Marvin L. Gentry"
 __all__     = [
     "fit", "LatticeFitResult",
@@ -27,3 +27,5 @@ __all__     = [
     "log_uniform_null", "sector_anchor_null", "NullTestResult",
     "plots",
 ]
+
+from .lucas import fit_lucas, lucas, is_prime_lucas, LucasResult
