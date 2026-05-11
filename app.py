@@ -59,8 +59,8 @@ st.markdown("""
 DEMOS = {
     "Standard Model masses (physics)": {
         "names":  ["e","mu","tau","u","c","t","d","s","b","W","Z","H"],
-        "values": [5.11e-4,0.1057,1.777,0.00216,1.275,172.76,
-                   0.00467,0.0934,4.18,80.38,91.19,125.25],
+        "values": [5.11e-4,0.1057,1.777,0.00216,1.273,172.57,
+                   0.00467,0.0934,4.18,80.3692,91.19,125.20],
         "anchor": 5.11e-4, "base": PHI, "denom": 4,
         "unit": "GeV",
         "note": "Fermion and boson masses from PDG 2024."
@@ -256,7 +256,7 @@ with st.sidebar:
                         use_container_width=True)
 
     st.markdown("---")
-    st.caption("v0.1.1 · [GitHub](https://github.com/drmlgentry/latticefit) · "
+    st.caption("v0.3.0 · [GitHub](https://github.com/drmlgentry/latticefit) · "
                "Patent pending US 64/013,306")
 
 # ── Main panel ─────────────────────────────────────────────────────
@@ -440,7 +440,7 @@ with tab3:
 
     # JSON download
     json_out = {
-        "latticefit_version": "0.1.1",
+        "latticefit_version": "0.3.0",
         "parameters": {"anchor": result.anchor, "base": result.base,
                        "denom": result.denom},
         "fit": {"rms": result.rms, "n": len(result.data),
@@ -462,7 +462,7 @@ with tab3:
     st.markdown("---")
     st.markdown("**Cite LatticeFit:**")
     st.code("""Gentry, M. L. (2026). LatticeFit: Discrete lattice fitting
-with statistical validation (v0.1.1). GitHub.
+with statistical validation (v0.3.0). GitHub.
 https://github.com/drmlgentry/latticefit
 
 @software{latticefit2026,
@@ -510,3 +510,80 @@ with st.expander("📊 Null test details"):
 
     st.caption(f"Log-uniform null, {null.n_trials:,} trials. "
                "p-value = fraction of random spectra achieving RMS ≤ observed.")
+
+# ── Claude AI Interpretation ───────────────────────────────────────
+st.markdown("---")
+with st.expander("🤖 AI Interpretation (Claude)", expanded=False):
+    # Get API key from secrets or environment
+    api_key = None
+    try:
+        api_key = st.secrets.get("ANTHROPIC_API_KEY")
+    except Exception:
+        pass
+    if not api_key:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    if not api_key:
+        st.warning(
+            "No Anthropic API key found. Add `ANTHROPIC_API_KEY` to "
+            "`.streamlit/secrets.toml` or set as an environment variable."
+        )
+    else:
+        interpret_btn = st.button("✨ Interpret results with Claude",
+                                  key="claude_btn")
+        if interpret_btn:
+            import anthropic
+
+            # Build a compact summary for Claude
+            names_str = ", ".join(display_names) if display_names else "unlabeled"
+            outliers = [
+                f"{n} (δ={r:.3f})"
+                for n, r in zip(display_names or [str(i) for i in range(len(result.data))],
+                                result.residuals)
+                if r > 0.5 / result.denom
+            ]
+            outlier_str = (", ".join(outliers) if outliers
+                           else "none — all points within one lattice step")
+
+            prompt = f"""You are a scientific data analyst. A user has just run LatticeFit, 
+a tool that tests whether data clusters near a geometric lattice of the form 
+x ≈ A · r^(k/d), where k is an integer.
+
+Here are the results:
+- Data: {names_str}
+- Lattice base r = {result.base:.5g}, denominator d = {result.denom}, anchor A = {result.anchor:.4g}
+- RMS residual = {result.rms:.5f} (max possible = {0.5/result.denom:.5f}, so {result.rms/(0.5/result.denom)*100:.1f}% of maximum)
+- Null test p-value = {null.p_value:.4f} ({null.n_trials:,} trials)
+- Outliers (residual > 0.5/d): {outlier_str}
+- Top 3 best-fit points: {", ".join(
+    sorted(zip(display_names or [str(i) for i in range(len(result.data))],
+               result.residuals), key=lambda x: x[1])[:3][0][0] + " (δ=" +
+    f"{sorted(zip(display_names or [str(i) for i in range(len(result.data))],
+               result.residuals), key=lambda x: x[1])[i][1]:.3f})"
+    for i in range(min(3, len(result.data)))
+)}
+
+Please provide:
+1. A plain-language interpretation of what these results mean (2-3 sentences)
+2. Whether the lattice structure is strong, moderate, or absent, and why
+3. What the outliers (if any) might indicate
+4. One concrete next step the user could take
+
+Be direct and quantitative. Do not use bullet points for section 1. Keep the total response under 200 words."""
+
+            with st.spinner("Claude is interpreting your results..."):
+                try:
+                    client = anthropic.Anthropic(api_key=api_key)
+                    message = client.messages.create(
+                        model="claude-sonnet-4-20250514",
+                        max_tokens=400,
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    interpretation = message.content[0].text
+                    st.markdown(interpretation)
+                    st.caption(
+                        f"Generated by Claude (claude-sonnet-4-20250514). "
+                        f"RMS={result.rms:.4f}, p={null.p_value:.4f}."
+                    )
+                except Exception as e:
+                    st.error(f"Claude API error: {e}")
