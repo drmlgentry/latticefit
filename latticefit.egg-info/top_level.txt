@@ -1,3 +1,6 @@
+dist
 examples
 latticefit
+pharmgkb_clinical
+results
 tests
