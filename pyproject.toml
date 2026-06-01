@@ -1,4 +1,4 @@
-﻿[build-system]
+[build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "latticefit"
 version = "0.3.0"
 description = "Lattice fitting engine"
+readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.24"]
 
