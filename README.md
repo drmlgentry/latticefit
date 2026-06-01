@@ -1,10 +1,12 @@
-﻿# LatticeFit
+# LatticeFit
 
 **Deterministic engine for discovering discrete multiplicative structure in positive real data.**
 
-Given measurements xâ‚, xâ‚‚, â€¦, xâ‚™, LatticeFit tests whether they cluster near a geometric lattice:
+Given measurements x_1, x_2, ..., x_n, LatticeFit tests whether they cluster near a geometric lattice:
 
-    xáµ¢ â‰ˆ A Â· r^(káµ¢/d),   káµ¢ âˆˆ Z
+```
+x_i ~ A * r^(k_i/d),   k_i in Z
+```
 
 and quantifies whether the alignment is statistically non-accidental.
 
@@ -29,101 +31,46 @@ names  = ["e", "mu", "tau", "u", "c", "t", "d", "s", "b"]
 result = latticefit.fit(masses, anchor=5.11e-4,
                         base=latticefit.PHI, denom=4, names=names)
 print(result.summary())
-
-# Statistical validation
-null = latticefit.log_uniform_null(result, n_trials=10_000)
-print(null.summary())
-
-# Plot
-latticefit.plots.plot_fit(result, outfile="fit.png")
 ```
 
-## Command-line
+## Features
 
-```bash
-latticefit masses.csv --anchor 5.11e-4 --base phi --denom 4 --null 10000 --plot fit.png
-latticefit data.csv --auto
-```
+- **Deterministic scan** -- no random initialization, reproducible results
+- **Anchor-shift invariance** -- fits relative ratios, not absolute scale
+- **Structure-preserving null hypothesis** -- permutation test that preserves
+  the multiplicative spread of the data
+- **Auto-discovery** -- scans over base r and denominator d automatically
+- **CLI** -- `latticefit data.csv --base phi --denom 4`
+- **Publication-quality plots** -- ladder diagrams, residual histograms
 
+## Background
 
-## Lucas Mode
+LatticeFit was developed as the core fitting engine for the
+[Hyperbolic Flavour Geometry](https://drmlgentry.github.io/hyperbolic-flavor-geometry/)
+programme, which derives Standard Model flavor parameters from the arithmetic
+geometry of compact hyperbolic 3-manifolds.
 
-Based on the **Lucas-geodesic bridge theorem** (Gentry 2026), the golden ratio
-base φ is *theoretically derived* for data from arithmetic hyperbolic 3-manifolds:
+The golden ratio base `r = phi = (1+sqrt(5))/2` is motivated by the
+Lucas trace identity: closed geodesics of length `4m*log(phi)` in
+hyperbolic 3-manifolds have integer holonomy traces equal to Lucas numbers.
 
-> A geodesic of length ℓ satisfies ℓ = k·log φ if and only if
-> the holonomy trace magnitude |tr(γ)| = L_k = φ^k + φ^{-k} (exact).
-
-Use `--lucas` to fix the base to φ and get Lucas number diagnostics:
-
-```bash
-latticefit data.csv --lucas --anchor 5.11e-4
-```
-
-Output includes:
-- RMS residual and p-value against log-uniform null
-- Fraction of data at **integer Lucas number** positions (L_0=2, L_2=3, L_4=7, L_5=11, L_7=29…)
-- **Prime Lucas hits**: data points at prime Lucas positions — the prime dictionary {2, 3, 7, 11, 29} of the PMNS covering tower
-
-Python API:
+## Lucas mode
 
 ```python
-from latticefit.lucas import fit_lucas, lucas
-
-result = fit_lucas(masses, anchor=5.11e-4)
-print(result.summary())
-# L_7 = phi^7 + phi^-7 = 29.034  (CKM norm-squared)
-print(lucas(7))
+# Scan with golden ratio base (motivated by hyperbolic geometry)
+result = latticefit.fit(masses, base=latticefit.PHI, lucas=True)
 ```
-
-## Applications
-
-- Particle physics mass spectra
-- Financial return distributions
-- Biological scaling laws
-- Engineering failure-rate hierarchies
-- Signal amplitude spectra
-- Any dataset spanning multiple orders of magnitude
-
-## Patentable method
-
-The bounded integer scan + structure-preserving null test combination
-is a novel software method. See `PATENT_NOTES.md` for provisional
-patent guidance.
 
 ## Citation
 
-If you use LatticeFit in research, please cite:
+If you use LatticeFit in your research, please cite:
 
-> M. L. Gentry, "Geometric Unification of Flavor: Masses, Mixing,
-> and CP from the Golden Ratio Lattice," submitted (2026).
+```
+Gentry, M.L. (2026). LatticeFit v0.3.0.
+GitHub: https://github.com/drmlgentry/latticefit
+PyPI: https://pypi.org/project/latticefit/
+```
 
 ## License
 
 MIT
-
----
-> **Patent pending.** US Provisional Application No. 64/013,306 (filed March 22, 2026).
-
-
-## Validity Criteria
-
-Before interpreting a LatticeFit result as significant, verify:
-
-1. **Minimum range**: Data should span at least 3 orders of magnitude
-   (log10 range >= 3). Datasets spanning < 1 order of magnitude will
-   show spurious lattice structure regardless of base, because the
-   null distribution becomes non-uniform at narrow ranges.
-
-2. **Binned data**: Check that data is not discretized into fixed bins
-   (e.g. patent activity classifications, assay concentration series).
-   Use len(unique_values) / len(values) > 0.5 as a rough screen.
-
-3. **Physics-motivated null**: Where a theoretical prediction exists
-   (e.g. Bethe-Weizsacker for nuclear BE, Gutenberg-Richter for
-   earthquakes), test residuals from that prediction rather than
-   raw values.
-
-4. **Effect size**: z-score alone is misleading at large n. Report
-   both z and the fractional RMS reduction: (null_RMS - obs_RMS) / null_RMS.
-   Values below 5% are marginal regardless of p-value.
